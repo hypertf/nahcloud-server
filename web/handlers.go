@@ -1,13 +1,14 @@
 package web
 
 import (
+	"encoding/base64"
 	"html/template"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/hypertf/dirtcloud-server/domain"
-	"github.com/hypertf/dirtcloud-server/service"
+	"github.com/hypertf/nahcloud-server/domain"
+	"github.com/hypertf/nahcloud-server/service"
 )
 
 type Handler struct {
@@ -26,7 +27,7 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>DirtCloud Console</title>
+    <title>NahCloud Console</title>
     <script src="https://unpkg.com/htmx.org@1.9.6"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
@@ -51,14 +52,15 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
     </style>
 </head>
 <body>
-    <h1>DirtCloud Console</h1>
+    <h1>NahCloud Console</h1>
     <div class="nav">
         <a href="#" hx-get="/web/projects" hx-target="#content">Projects</a>
         <a href="#" hx-get="/web/instances" hx-target="#content">Instances</a>
         <a href="#" hx-get="/web/metadata" hx-target="#content">Metadata</a>
+        <a href="#" hx-get="/web/storage" hx-target="#content">Storage</a>
     </div>
     <div id="content" class="content">
-        <p>Welcome to DirtCloud Console. Select a resource type from the navigation above.</p>
+        <p>Welcome to NahCloud Console. Select a resource type from the navigation above.</p>
     </div>
 </body>
 </html>
@@ -496,13 +498,9 @@ func (h *Handler) ListMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get full metadata objects for each path
+	// List already returns full metadata objects
 	var metadata []domain.Metadata
-	for _, path := range paths {
-		meta, err := h.service.GetMetadata(path)
-		if err != nil {
-			continue // Skip if metadata was deleted between list and get
-		}
+	for _, meta := range paths {
 		metadata = append(metadata, *meta)
 	}
 
@@ -590,7 +588,7 @@ func (h *Handler) CreateMetadata(w http.ResponseWriter, r *http.Request) {
 	path := r.FormValue("path")
 	value := r.FormValue("value")
 
-	if _, err := h.service.SetMetadata(path, value); err != nil {
+	if _, err := h.service.CreateMetadata(domain.CreateMetadataRequest{Path: path, Value: value}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -639,10 +637,19 @@ func (h *Handler) UpdateMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	id := r.FormValue("id")
 	path := r.FormValue("path")
 	value := r.FormValue("value")
 
-	if _, err := h.service.SetMetadata(path, value); err != nil {
+	updateReq := domain.UpdateMetadataRequest{}
+	if path != "" {
+		updateReq.Path = &path
+	}
+	if value != "" {
+		updateReq.Value = &value
+	}
+
+	if _, err := h.service.UpdateMetadata(id, updateReq); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -664,4 +671,251 @@ func (h *Handler) DeleteMetadata(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// Storage handlers
+// ListStorage shows all buckets
+func (h *Handler) ListStorage(w http.ResponseWriter, r *http.Request) {
+	buckets, err := h.service.ListBuckets(domain.BucketListOptions{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	tmpl := `
+<div>
+    <h2>Storage Buckets</h2>
+    <button class="btn" hx-get="/web/storage/buckets/new" hx-target="#modal-content" onclick="document.getElementById('modal').style.display='block'">New Bucket</button>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .}}
+            <tr>
+                <td>
+                    <a href="#" hx-get="/web/storage/buckets/{{.Name}}/objects" hx-target="#content">{{.Name}}</a>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="document.getElementById('modal').style.display='none'">&times;</span>
+        <div id="modal-content"></div>
+    </div>
+</div>
+`
+	
+	t := template.Must(template.New("storage-buckets").Parse(tmpl))
+	if err := t.Execute(w, buckets); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// NewBucketForm shows modal to create a new bucket
+func (h *Handler) NewBucketForm(w http.ResponseWriter, r *http.Request) {
+	tmpl := `
+<h3>New Bucket</h3>
+<form hx-post="/web/storage/buckets" hx-target="#content" hx-on-success="document.getElementById('modal').style.display='none'">
+    <div class="form-group">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+    </div>
+    <button type="submit" class="btn">Create</button>
+    <button type="button" class="btn" onclick="document.getElementById('modal').style.display='none'">Cancel</button>
+</form>
+`
+	w.Write([]byte(tmpl))
+}
+
+// CreateBucket handles bucket creation from web UI
+func (h *Handler) CreateBucket(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	name := r.FormValue("name")
+	if _, err := h.service.CreateBucket(domain.CreateBucketRequest{Name: name}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// Return updated storage list
+	h.ListStorage(w, r)
+}
+
+// ListBucketObjects shows objects within a bucket (with optional prefix filter)
+func (h *Handler) ListBucketObjects(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+	prefix := r.URL.Query().Get("prefix")
+
+	bucket, err := h.service.GetBucketByName(name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	objects, err := h.service.ListObjects(domain.ObjectListOptions{BucketID: bucket.Name, Prefix: prefix})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	tmpl := `
+<div>
+    <h2>Bucket: {{.Bucket.Name}}</h2>
+    <button class="btn" hx-get="/web/storage" hx-target="#content">Back to Buckets</button>
+    <button class="btn" hx-get="/web/storage/buckets/{{.Bucket.Name}}/objects/new" hx-target="#modal-content" onclick="document.getElementById('modal').style.display='block'">Upload Object</button>
+    <div class="form-group">
+        <label for="prefix-filter">Filter by prefix:</label>
+        <input type="text" id="prefix-filter" name="prefix" hx-get="/web/storage/buckets/{{.Bucket.Name}}/objects" hx-params="*" hx-target="#content" hx-trigger="input changed delay:500ms" value="{{.Prefix}}">
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Path</th>
+                <th>Updated At</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Objects}}
+            <tr>
+                <td>{{.Path}}</td>
+                <td>{{.UpdatedAt.Format "2006-01-02 15:04:05"}}</td>
+                <td>
+                    <button class="btn" hx-get="/web/storage/buckets/{{$.Bucket.Name}}/objects/{{.ID}}" hx-target="#modal-content" onclick="document.getElementById('modal').style.display='block'">View</button>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="document.getElementById('modal').style.display='none'">&times;</span>
+        <div id="modal-content"></div>
+    </div>
+</div>
+`
+
+	data := struct {
+		Bucket  *domain.Bucket
+		Objects []*domain.Object
+		Prefix  string
+	}{
+		Bucket:  bucket,
+		Objects: objects,
+		Prefix:  prefix,
+	}
+
+	t := template.Must(template.New("bucket-objects").Parse(tmpl))
+	if err := t.Execute(w, data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// NewObjectForm shows modal to upload a new object into a bucket
+func (h *Handler) NewObjectForm(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+	bucket, err := h.service.GetBucketByName(name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	tmpl := `
+<h3>Upload Object to {{.Name}}</h3>
+<form hx-post="/web/storage/buckets/{{.ID}}/objects" hx-target="#content" hx-on-success="document.getElementById('modal').style.display='none'">
+    <div class="form-group">
+        <label for="path">Path:</label>
+        <input type="text" id="path" name="path" placeholder="folder/file.txt" required>
+    </div>
+    <div class="form-group">
+        <label for="content_raw">Content:</label>
+        <textarea id="content_raw" name="content_raw" rows="8" style="width: 100%; padding: 8px; border: 1px solid #ddd;" required></textarea>
+    </div>
+    <small>The content will be base64-encoded and stored.</small>
+    <button type="submit" class="btn">Upload</button>
+    <button type="button" class="btn" onclick="document.getElementById('modal').style.display='none'">Cancel</button>
+</form>
+`
+	t := template.Must(template.New("new-object").Parse(tmpl))
+	if err := t.Execute(w, bucket); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+// CreateObject handles object creation from web UI
+func (h *Handler) CreateObject(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	bucketName := vars["name"]
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	path := r.FormValue("path")
+	raw := r.FormValue("content_raw")
+	enc := base64.StdEncoding.EncodeToString([]byte(raw))
+	if _, err := h.service.CreateObject(domain.CreateObjectRequest{BucketID: bucketName, Path: path, Content: enc}); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// Return updated objects list for this bucket
+	h.ListBucketObjects(w, r)
+}
+
+// ViewObject renders a modal with decoded object content
+func (h *Handler) ViewObject(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	bucketName := vars["name"]
+	objID := vars["objid"]
+	obj, err := h.service.GetObject(objID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	if obj.BucketID != bucketName {
+		http.Error(w, "object not found in bucket", http.StatusNotFound)
+		return
+	}
+	data, err := base64.StdEncoding.DecodeString(obj.Content)
+	if err != nil {
+		http.Error(w, "failed to decode object content", http.StatusInternalServerError)
+		return
+	}
+	tmpl := `
+<h3>Object: {{.Path}}</h3>
+<div class="form-group">
+    <label>Size:</label>
+    <span>{{.Size}} bytes</span>
+</div>
+<div class="form-group">
+    <label>Content:</label>
+    <pre style="white-space: pre-wrap; word-wrap: break-word; border: 1px solid #ddd; padding: 8px; max-height: 60vh; overflow: auto;">{{.Content}}</pre>
+</div>
+<button class="btn" onclick="document.getElementById('modal').style.display='none'">Close</button>
+`
+	t := template.Must(template.New("view-object").Parse(tmpl))
+	payload := struct{
+		Path string
+		Size int
+		Content string
+	}{
+		Path: obj.Path,
+		Size: len(data),
+		Content: string(data),
+	}
+	if err := t.Execute(w, payload); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/hypertf/dirtcloud-server/web"
+	"github.com/hypertf/nahcloud-server/web"
 )
 
 // SetupRouter creates and configures the HTTP router
@@ -43,6 +43,15 @@ func SetupRouter(handler *Handler) *mux.Router {
 	webRouter.HandleFunc("/metadata/update", webHandler.UpdateMetadata).Methods("PUT")
 	webRouter.HandleFunc("/metadata/delete", webHandler.DeleteMetadata).Methods("DELETE")
 
+    // Storage routes
+    webRouter.HandleFunc("/storage", webHandler.ListStorage).Methods("GET")
+    webRouter.HandleFunc("/storage/buckets/new", webHandler.NewBucketForm).Methods("GET")
+    webRouter.HandleFunc("/storage/buckets", webHandler.CreateBucket).Methods("POST")
+    webRouter.HandleFunc("/storage/buckets/{name}/objects", webHandler.ListBucketObjects).Methods("GET")
+    webRouter.HandleFunc("/storage/buckets/{name}/objects/new", webHandler.NewObjectForm).Methods("GET")
+    webRouter.HandleFunc("/storage/buckets/{name}/objects", webHandler.CreateObject).Methods("POST")
+    webRouter.HandleFunc("/storage/buckets/{name}/objects/{objid}", webHandler.ViewObject).Methods("GET")
+
 	// API prefix
 	api := router.PathPrefix("/v1").Subrouter()
 
@@ -68,6 +77,27 @@ func SetupRouter(handler *Handler) *mux.Router {
 	api.HandleFunc("/metadata/{id}", handler.UpdateMetadata).Methods("PATCH")
 	api.HandleFunc("/metadata/{id}", handler.DeleteMetadata).Methods("DELETE")
 
+	// Storage bucket routes
+	api.HandleFunc("/buckets", handler.CreateBucket).Methods("POST")
+	api.HandleFunc("/buckets", handler.ListBuckets).Methods("GET")
+	api.HandleFunc("/buckets/{id}", handler.GetBucket).Methods("GET")
+	api.HandleFunc("/buckets/{id}", handler.UpdateBucket).Methods("PATCH")
+	api.HandleFunc("/buckets/{id}", handler.DeleteBucket).Methods("DELETE")
+
+	// Bucket-scoped object routes
+	api.HandleFunc("/bucket/{bucket_id}/objects", handler.CreateObject).Methods("POST")
+	api.HandleFunc("/bucket/{bucket_id}/objects", handler.ListObjects).Methods("GET") // optional: prefix
+	api.HandleFunc("/bucket/{bucket_id}/objects/{id}", handler.GetObject).Methods("GET")
+	api.HandleFunc("/bucket/{bucket_id}/objects/{id}", handler.UpdateObject).Methods("PATCH")
+	api.HandleFunc("/bucket/{bucket_id}/objects/{id}", handler.DeleteObject).Methods("DELETE")
+
+	// Terraform state routes
+	api.HandleFunc("/tfstate/{id}", handler.TFStateGet).Methods("GET")
+	api.HandleFunc("/tfstate/{id}", handler.TFStatePost).Methods("POST")
+	api.HandleFunc("/tfstate/{id}", handler.TFStateDelete).Methods("DELETE")
+	api.HandleFunc("/tfstate/{id}", handler.TFStateLock).Methods("LOCK")
+	api.HandleFunc("/tfstate/{id}", handler.TFStateUnlock).Methods("UNLOCK")
+
 	// Add CORS middleware for development
 	router.Use(corsMiddleware)
 
@@ -82,7 +112,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-CSRF-Token, X-Dirt-No-Chaos, X-Dirt-Latency")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-CSRF-Token, X-Nah-No-Chaos, X-Nah-Latency")
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)

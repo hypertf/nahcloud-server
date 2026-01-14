@@ -3,7 +3,7 @@ package sqlite
 import (
 	"testing"
 
-	"github.com/hypertf/dirtcloud-server/domain"
+	"github.com/hypertf/nahcloud-server/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -62,9 +62,9 @@ func TestMetadataRepository_Create(t *testing.T) {
 			if tt.expectError {
 				require.Error(t, err)
 				if tt.errorCode != "" {
-					dirtErr, ok := err.(*domain.DirtError)
+					nahErr, ok := err.(*domain.NahError)
 					require.True(t, ok)
-					assert.Equal(t, tt.errorCode, dirtErr.Code)
+					assert.Equal(t, tt.errorCode, nahErr.Code)
 				}
 				assert.Nil(t, metadata)
 			} else {
@@ -126,9 +126,9 @@ func TestMetadataRepository_GetByID(t *testing.T) {
 			if tt.expectError {
 				require.Error(t, err)
 				if tt.errorCode != "" {
-					dirtErr, ok := err.(*domain.DirtError)
+					nahErr, ok := err.(*domain.NahError)
 					require.True(t, ok)
-					assert.Equal(t, tt.errorCode, dirtErr.Code)
+					assert.Equal(t, tt.errorCode, nahErr.Code)
 				}
 				assert.Nil(t, metadata)
 			} else {
@@ -238,9 +238,9 @@ func TestMetadataRepository_Update(t *testing.T) {
 			if tt.expectError {
 				require.Error(t, err)
 				if tt.errorCode != "" {
-					dirtErr, ok := err.(*domain.DirtError)
+					nahErr, ok := err.(*domain.NahError)
 					require.True(t, ok)
-					assert.Equal(t, tt.errorCode, dirtErr.Code)
+					assert.Equal(t, tt.errorCode, nahErr.Code)
 				}
 				assert.Nil(t, metadata)
 			} else {
@@ -417,9 +417,9 @@ func TestMetadataRepository_Delete(t *testing.T) {
 			if tt.expectError {
 				require.Error(t, err)
 				if tt.errorCode != "" {
-					dirtErr, ok := err.(*domain.DirtError)
+					nahErr, ok := err.(*domain.NahError)
 					require.True(t, ok)
-					assert.Equal(t, tt.errorCode, dirtErr.Code)
+					assert.Equal(t, tt.errorCode, nahErr.Code)
 				}
 			} else {
 				require.NoError(t, err)

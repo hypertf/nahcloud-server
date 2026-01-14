@@ -6,15 +6,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDirtError_Error(t *testing.T) {
+func TestNahError_Error(t *testing.T) {
 	tests := []struct {
 		name     string
-		err      *DirtError
+		err      *NahError
 		expected string
 	}{
 		{
 			name: "simple error",
-			err: &DirtError{
+			err: &NahError{
 				Code:    ErrorCodeNotFound,
 				Message: "resource not found",
 			},
@@ -22,7 +22,7 @@ func TestDirtError_Error(t *testing.T) {
 		},
 		{
 			name: "error with details",
-			err: &DirtError{
+			err: &NahError{
 				Code:    ErrorCodeInvalidInput,
 				Message: "validation failed",
 				Details: map[string]interface{}{"field": "name"},
@@ -44,13 +44,13 @@ func TestNewError(t *testing.T) {
 		code     string
 		message  string
 		details  []map[string]interface{}
-		expected *DirtError
+		expected *NahError
 	}{
 		{
 			name:    "without details",
 			code:    ErrorCodeNotFound,
 			message: "not found",
-			expected: &DirtError{
+			expected: &NahError{
 				Code:    ErrorCodeNotFound,
 				Message: "not found",
 				Details: nil,
@@ -61,7 +61,7 @@ func TestNewError(t *testing.T) {
 			code:    ErrorCodeInvalidInput,
 			message: "invalid",
 			details: []map[string]interface{}{{"field": "name"}},
-			expected: &DirtError{
+			expected: &NahError{
 				Code:    ErrorCodeInvalidInput,
 				Message: "invalid",
 				Details: map[string]interface{}{"field": "name"},

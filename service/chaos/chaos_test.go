@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hypertf/dirtcloud-server/domain"
+	"github.com/hypertf/nahcloud-server/domain"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -221,18 +221,18 @@ func TestGetFloatEnv(t *testing.T) {
 func TestLoadConfigFromEnv(t *testing.T) {
 	// Clean environment
 	envVars := []string{
-		"DIRT_CHAOS_ENABLED",
-		"DIRT_CHAOS_SEED",
-		"DIRT_LATENCY_GLOBAL_MS",
-		"DIRT_LATENCY_PROJECTS_MS",
-		"DIRT_LATENCY_INSTANCES_MS",
-		"DIRT_LATENCY_METADATA_MS",
-		"DIRT_ERRRATE_PROJECTS",
-		"DIRT_ERRRATE_PROJECTS_GET",
-		"DIRT_ERRRATE_INSTANCES",
-		"DIRT_ERRRATE_METADATA",
-		"DIRT_ERROR_TYPES",
-		"DIRT_ERROR_WEIGHTS",
+		"NAH_CHAOS_ENABLED",
+		"NAH_CHAOS_SEED",
+		"NAH_LATENCY_GLOBAL_MS",
+		"NAH_LATENCY_PROJECTS_MS",
+		"NAH_LATENCY_INSTANCES_MS",
+		"NAH_LATENCY_METADATA_MS",
+		"NAH_ERRRATE_PROJECTS",
+		"NAH_ERRRATE_PROJECTS_GET",
+		"NAH_ERRRATE_INSTANCES",
+		"NAH_ERRRATE_METADATA",
+		"NAH_ERROR_TYPES",
+		"NAH_ERROR_WEIGHTS",
 	}
 
 	for _, v := range envVars {
@@ -258,18 +258,18 @@ func TestLoadConfigFromEnv(t *testing.T) {
 
 	t.Run("full config from env", func(t *testing.T) {
 		// Set environment variables
-		os.Setenv("DIRT_CHAOS_ENABLED", "true")
-		os.Setenv("DIRT_CHAOS_SEED", "12345")
-		os.Setenv("DIRT_LATENCY_GLOBAL_MS", "10-100")
-		os.Setenv("DIRT_LATENCY_PROJECTS_MS", "5-50")
-		os.Setenv("DIRT_LATENCY_INSTANCES_MS", "20-200")
-		os.Setenv("DIRT_LATENCY_METADATA_MS", "1-10")
-		os.Setenv("DIRT_ERRRATE_PROJECTS", "0.1")
-		os.Setenv("DIRT_ERRRATE_PROJECTS_GET", "0.05")
-		os.Setenv("DIRT_ERRRATE_INSTANCES", "0.2")
-		os.Setenv("DIRT_ERRRATE_METADATA", "0.15")
-		os.Setenv("DIRT_ERROR_TYPES", "500,503")
-		os.Setenv("DIRT_ERROR_WEIGHTS", "5,3")
+		os.Setenv("NAH_CHAOS_ENABLED", "true")
+		os.Setenv("NAH_CHAOS_SEED", "12345")
+		os.Setenv("NAH_LATENCY_GLOBAL_MS", "10-100")
+		os.Setenv("NAH_LATENCY_PROJECTS_MS", "5-50")
+		os.Setenv("NAH_LATENCY_INSTANCES_MS", "20-200")
+		os.Setenv("NAH_LATENCY_METADATA_MS", "1-10")
+		os.Setenv("NAH_ERRRATE_PROJECTS", "0.1")
+		os.Setenv("NAH_ERRRATE_PROJECTS_GET", "0.05")
+		os.Setenv("NAH_ERRRATE_INSTANCES", "0.2")
+		os.Setenv("NAH_ERRRATE_METADATA", "0.15")
+		os.Setenv("NAH_ERROR_TYPES", "500,503")
+		os.Setenv("NAH_ERROR_WEIGHTS", "5,3")
 
 		defer func() {
 			for _, v := range envVars {
@@ -398,9 +398,9 @@ func TestChaosService_maybeInjectError(t *testing.T) {
 			
 			if tt.expectError {
 				assert.Error(t, err)
-				dirtErr, ok := err.(*domain.DirtError)
+				nahErr, ok := err.(*domain.NahError)
 				assert.True(t, ok)
-				assert.Contains(t, []string{domain.ErrorCodeInternalError, domain.ErrorCodeServiceUnavailable, domain.ErrorCodeTooManyRequests}, dirtErr.Code)
+				assert.Contains(t, []string{domain.ErrorCodeInternalError, domain.ErrorCodeServiceUnavailable, domain.ErrorCodeTooManyRequests}, nahErr.Code)
 			} else {
 				assert.NoError(t, err)
 			}
@@ -470,7 +470,7 @@ func TestChaosService_ApplyChaos_BypassHeader(t *testing.T) {
 	}
 
 	req, _ := http.NewRequest("GET", "/test", nil)
-	req.Header.Set("X-Dirt-No-Chaos", "true")
+	req.Header.Set("X-Nah-No-Chaos", "true")
 	ctx := context.Background()
 
 	// Should bypass chaos with header
@@ -489,7 +489,7 @@ func TestChaosService_ApplyChaos_ForcedLatency(t *testing.T) {
 	}
 
 	req, _ := http.NewRequest("GET", "/test", nil)
-	req.Header.Set("X-Dirt-Latency", "10") // Force 10ms latency
+	req.Header.Set("X-Nah-Latency", "10") // Force 10ms latency
 	
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()

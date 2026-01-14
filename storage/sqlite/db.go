@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	defaultDSN = "file:dirt.db?_busy_timeout=5000&_fk=1"
+	defaultDSN = "file:nah.db?_busy_timeout=5000&_fk=1"
 )
 
 // DB wraps the SQLite database connection
@@ -60,33 +60,49 @@ func NewDB(dsn string) (*DB, error) {
 // initSchema creates the necessary tables if they don't exist
 func (db *DB) initSchema() error {
 	schemas := []string{
-		`CREATE TABLE IF NOT EXISTS projects (
-			id TEXT PRIMARY KEY,
-			name TEXT UNIQUE NOT NULL,
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-		)`,
-		`CREATE TABLE IF NOT EXISTS instances (
-			id TEXT PRIMARY KEY,
-			project_id TEXT NOT NULL,
-			name TEXT NOT NULL,
-			cpu INTEGER NOT NULL,
-			memory_mb INTEGER NOT NULL,
-			image TEXT NOT NULL,
-			status TEXT NOT NULL DEFAULT 'running',
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-			UNIQUE(project_id, name)
-		)`,
-		`CREATE TABLE IF NOT EXISTS metadata (
-			id TEXT PRIMARY KEY,
-			path TEXT NOT NULL UNIQUE,
-			value TEXT NOT NULL,
-			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-		)`,
-	}
+	`CREATE TABLE IF NOT EXISTS projects (
+	id TEXT PRIMARY KEY,
+	name TEXT UNIQUE NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE TABLE IF NOT EXISTS instances (
+	id TEXT PRIMARY KEY,
+	project_id TEXT NOT NULL,
+	name TEXT NOT NULL,
+	cpu INTEGER NOT NULL,
+	memory_mb INTEGER NOT NULL,
+	image TEXT NOT NULL,
+	status TEXT NOT NULL DEFAULT 'running',
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+	UNIQUE(project_id, name)
+	)`,
+	`CREATE TABLE IF NOT EXISTS metadata (
+	id TEXT PRIMARY KEY,
+	path TEXT NOT NULL UNIQUE,
+	value TEXT NOT NULL,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	 `CREATE TABLE IF NOT EXISTS buckets (
+				id TEXT PRIMARY KEY,
+				name TEXT UNIQUE NOT NULL,
+				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`,
+			`CREATE TABLE IF NOT EXISTS objects (
+				id TEXT PRIMARY KEY,
+				bucket_id TEXT NOT NULL,
+				path TEXT NOT NULL,
+				content TEXT NOT NULL,
+				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				FOREIGN KEY (bucket_id) REFERENCES buckets(id) ON DELETE CASCADE,
+				UNIQUE(bucket_id, path)
+			)`,
+		}
 
 	for _, schema := range schemas {
 		if _, err := db.Exec(schema); err != nil {

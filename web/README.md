@@ -1,10 +1,10 @@
-# DirtCloud Web Console
+# NahCloud Web Console
 
-A simple web-based interface for managing DirtCloud resources using HTMX for dynamic interactions.
+A simple web-based interface for managing NahCloud resources using HTMX for dynamic interactions.
 
 ## Features
 
-The web console provides BREAD (Browse, Read, Edit, Add, Delete) operations for all DirtCloud resources:
+The web console provides BREAD (Browse, Read, Edit, Add, Delete) operations for all NahCloud resources:
 
 ### Projects
 - **Browse**: View all projects in a table format

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hypertf/dirtcloud-server/domain"
+	"github.com/hypertf/nahcloud-server/domain"
 )
 
 // Config holds chaos engineering configuration
@@ -51,12 +51,16 @@ type ChaosService struct {
 // NewChaosService creates a new chaos service from environment variables
 func NewChaosService() *ChaosService {
 	config := loadConfigFromEnv()
-	
+	return NewChaosServiceWithConfig(config)
+}
+
+// NewChaosServiceWithConfig creates a new chaos service with the provided config
+func NewChaosServiceWithConfig(config *Config) *ChaosService {
 	var rng *rand.Rand
 	if config.Enabled {
 		rng = rand.New(rand.NewSource(config.Seed))
 	}
-	
+
 	return &ChaosService{
 		config: config,
 		rng:    rng,
@@ -66,38 +70,38 @@ func NewChaosService() *ChaosService {
 // loadConfigFromEnv loads chaos configuration from environment variables
 func loadConfigFromEnv() *Config {
 	config := &Config{
-		Enabled: getBoolEnv("DIRT_CHAOS_ENABLED", false),
-		Seed:    getIntEnv("DIRT_CHAOS_SEED", time.Now().UnixNano()),
+		Enabled: getBoolEnv("NAH_CHAOS_ENABLED", false),
+		Seed:    getIntEnv("NAH_CHAOS_SEED", time.Now().UnixNano()),
 		
 		ErrorTypes:   []int{503, 500, 429}, // defaults
 		ErrorWeights: []int{3, 2, 1},       // defaults
 	}
 	
 	// Load latency ranges
-	if latency := getEnv("DIRT_LATENCY_GLOBAL_MS", ""); latency != "" {
+	if latency := getEnv("NAH_LATENCY_GLOBAL_MS", ""); latency != "" {
 		config.GlobalLatencyRange = parseLatencyRange(latency)
 	}
-	if latency := getEnv("DIRT_LATENCY_PROJECTS_MS", ""); latency != "" {
+	if latency := getEnv("NAH_LATENCY_PROJECTS_MS", ""); latency != "" {
 		config.ProjectsLatencyRange = parseLatencyRange(latency)
 	}
-	if latency := getEnv("DIRT_LATENCY_INSTANCES_MS", ""); latency != "" {
+	if latency := getEnv("NAH_LATENCY_INSTANCES_MS", ""); latency != "" {
 		config.InstancesLatencyRange = parseLatencyRange(latency)
 	}
-	if latency := getEnv("DIRT_LATENCY_METADATA_MS", ""); latency != "" {
+	if latency := getEnv("NAH_LATENCY_METADATA_MS", ""); latency != "" {
 		config.MetadataLatencyRange = parseLatencyRange(latency)
 	}
 	
 	// Load error rates
-	config.ProjectsErrorRate = getFloatEnv("DIRT_ERRRATE_PROJECTS", 0.0)
-	config.ProjectsGetErrorRate = getFloatEnv("DIRT_ERRRATE_PROJECTS_GET", config.ProjectsErrorRate)
-	config.InstancesErrorRate = getFloatEnv("DIRT_ERRRATE_INSTANCES", 0.0)
-	config.MetadataErrorRate = getFloatEnv("DIRT_ERRRATE_METADATA", 0.0)
+	config.ProjectsErrorRate = getFloatEnv("NAH_ERRRATE_PROJECTS", 0.0)
+	config.ProjectsGetErrorRate = getFloatEnv("NAH_ERRRATE_PROJECTS_GET", config.ProjectsErrorRate)
+	config.InstancesErrorRate = getFloatEnv("NAH_ERRRATE_INSTANCES", 0.0)
+	config.MetadataErrorRate = getFloatEnv("NAH_ERRRATE_METADATA", 0.0)
 	
 	// Load error types and weights
-	if types := getEnv("DIRT_ERROR_TYPES", ""); types != "" {
+	if types := getEnv("NAH_ERROR_TYPES", ""); types != "" {
 		config.ErrorTypes = parseIntList(types)
 	}
-	if weights := getEnv("DIRT_ERROR_WEIGHTS", ""); weights != "" {
+	if weights := getEnv("NAH_ERROR_WEIGHTS", ""); weights != "" {
 		config.ErrorWeights = parseIntList(weights)
 	}
 	
@@ -111,7 +115,7 @@ func (c *ChaosService) ApplyProjectsChaos(ctx context.Context, r *http.Request, 
 	}
 	
 	// Check for bypass header
-	if r.Header.Get("X-Dirt-No-Chaos") == "true" {
+	if r.Header.Get("X-Nah-No-Chaos") == "true" {
 		return nil
 	}
 	
@@ -134,7 +138,7 @@ func (c *ChaosService) ApplyInstancesChaos(ctx context.Context, r *http.Request)
 	}
 	
 	// Check for bypass header
-	if r.Header.Get("X-Dirt-No-Chaos") == "true" {
+	if r.Header.Get("X-Nah-No-Chaos") == "true" {
 		return nil
 	}
 	
@@ -152,7 +156,7 @@ func (c *ChaosService) ApplyMetadataChaos(ctx context.Context, r *http.Request) 
 	}
 	
 	// Check for bypass header
-	if r.Header.Get("X-Dirt-No-Chaos") == "true" {
+	if r.Header.Get("X-Nah-No-Chaos") == "true" {
 		return nil
 	}
 	
@@ -166,7 +170,7 @@ func (c *ChaosService) ApplyMetadataChaos(ctx context.Context, r *http.Request) 
 // applyLatency applies latency injection
 func (c *ChaosService) applyLatency(ctx context.Context, r *http.Request, resourceRange *LatencyRange) {
 	// Check for forced latency header
-	if forcedLatency := r.Header.Get("X-Dirt-Latency"); forcedLatency != "" {
+	if forcedLatency := r.Header.Get("X-Nah-Latency"); forcedLatency != "" {
 		if ms, err := strconv.Atoi(forcedLatency); err == nil && ms > 0 {
 			select {
 			case <-time.After(time.Duration(ms) * time.Millisecond):

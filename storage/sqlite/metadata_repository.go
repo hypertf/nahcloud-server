@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/hypertf/dirtcloud-server/domain"
+	"github.com/hypertf/nahcloud-server/domain"
 )
 
 // MetadataRepository handles metadata data operations
@@ -28,7 +28,7 @@ func (r *MetadataRepository) Create(req domain.CreateMetadataRequest) (*domain.M
 		return nil, fmt.Errorf("failed to check path existence: %w", err)
 	}
 	if exists {
-		return nil, domain.AlreadyExistsError("metadata with path", req.Path)
+		return nil, domain.AlreadyExistsError("metadata", "path", req.Path)
 	}
 
 	id := uuid.New().String()
@@ -89,7 +89,7 @@ func (r *MetadataRepository) Update(id string, req domain.UpdateMetadataRequest)
 			return nil, fmt.Errorf("failed to check path existence: %w", err)
 		}
 		if exists {
-			return nil, domain.AlreadyExistsError("metadata with path", *req.Path)
+			return nil, domain.AlreadyExistsError("metadata", "path", *req.Path)
 		}
 	}
 

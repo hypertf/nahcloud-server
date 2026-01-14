@@ -1,7 +1,7 @@
 .PHONY: build test clean server provider install-deps fmt vet lint acceptance-test chaos-test help
 
 # Variables
-BINARY_NAME_SERVER=dirtcloud-server
+BINARY_NAME_SERVER=nahcloud-server
 
 VERSION?=dev
 LDFLAGS=-ldflags "-X main.version=$(VERSION)"
@@ -11,7 +11,7 @@ all: build
 
 ## Help
 help: ## Show this help message
-	@echo 'Management commands for DirtCloud:'
+	@echo 'Management commands for NahCloud:'
 	@echo
 	@echo 'Usage:'
 	@echo '  make [target]'
@@ -29,7 +29,7 @@ install-deps: ## Install Go dependencies
 ## Building
 build: server ## Build server binary
 
-server: ## Build the DirtCloud server
+server: ## Build the NahCloud server
 	go build $(LDFLAGS) -o bin/$(BINARY_NAME_SERVER) ./cmd/server
 
 
@@ -39,11 +39,11 @@ run-server: ## Run the server locally
 	go run ./cmd/server
 
 run-server-with-chaos: ## Run the server with chaos enabled
-	DIRT_CHAOS_ENABLED=true \
-	DIRT_LATENCY_GLOBAL_MS=10-100 \
-	DIRT_ERRRATE_PROJECTS=0.1 \
-	DIRT_ERRRATE_INSTANCES=0.05 \
-	DIRT_ERRRATE_METADATA=0.05 \
+	NAH_CHAOS_ENABLED=true \
+	NAH_LATENCY_GLOBAL_MS=10-100 \
+	NAH_ERRRATE_PROJECTS=0.1 \
+	NAH_ERRRATE_INSTANCES=0.05 \
+	NAH_ERRRATE_METADATA=0.05 \
 	go run ./cmd/server
 
 ## Testing
@@ -55,7 +55,7 @@ test-coverage: ## Run tests with coverage
 	go tool cover -html=coverage.out -o coverage.html
 
 chaos-test: ## Run chaos engineering tests
-	DIRT_CHAOS_ENABLED=true go test -v -tags=chaos ./...
+	NAH_CHAOS_ENABLED=true go test -v -tags=chaos ./...
 
 test-all: test chaos-test ## Run all tests
 
@@ -76,16 +76,16 @@ install-golangci-lint:
 
 ## Database
 clean-db: ## Remove the SQLite database file
-	rm -f dirt.db dirt.db-shm dirt.db-wal
+	rm -f nah.db nah.db-shm nah.db-wal
 
 reset-db: clean-db ## Reset the database (clean and restart server to recreate)
 
 ## Docker
 docker-build: ## Build Docker image
-	docker build -t dirtcloud:$(VERSION) .
+	docker build -t nahcloud:$(VERSION) .
 
 docker-run: ## Run Docker container
-	docker run -p 8080:8080 dirtcloud:$(VERSION)
+	docker run -p 8080:8080 nahcloud:$(VERSION)
 
 
 
@@ -105,7 +105,7 @@ docs: ## Generate documentation (placeholder)
 clean: ## Clean build artifacts and temporary files
 	rm -rf bin/
 	rm -f coverage.out coverage.html
-	rm -f dirt.db dirt.db-shm dirt.db-wal
+	rm -f nah.db nah.db-shm nah.db-wal
 
 
 ## Release preparation

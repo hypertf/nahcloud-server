@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hypertf/dirtcloud-server/domain"
+	"github.com/hypertf/nahcloud-server/domain"
 )
 
-// Client provides a Go SDK for the DirtCloud API
+// Client provides a Go SDK for the NahCloud API
 type Client struct {
 	baseURL    string
 	token      string
@@ -35,7 +35,7 @@ type Config struct {
 	RetryInitialBackoffMs int
 }
 
-// NewClient creates a new DirtCloud API client
+// NewClient creates a new NahCloud API client
 func NewClient(config Config) *Client {
 	if config.BaseURL == "" {
 		config.BaseURL = "http://localhost:8080"
@@ -163,10 +163,10 @@ func (c *Client) do(ctx context.Context, method, path string, body interface{}, 
 		// Handle client/server errors (don't retry)
 		respBody, _ := io.ReadAll(resp.Body)
 		
-		// Try to decode as DirtError
-		var dirtErr domain.DirtError
-		if err := json.Unmarshal(respBody, &dirtErr); err == nil {
-			return &dirtErr
+		// Try to decode as NahError
+		var nahErr domain.NahError
+		if err := json.Unmarshal(respBody, &nahErr); err == nil {
+			return &nahErr
 		}
 		
 		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBody))

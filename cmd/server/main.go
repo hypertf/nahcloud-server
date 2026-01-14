@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -9,20 +10,50 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hypertf/dirtcloud-server/api"
-	"github.com/hypertf/dirtcloud-server/service"
-	"github.com/hypertf/dirtcloud-server/service/chaos"
-	"github.com/hypertf/dirtcloud-server/storage/sqlite"
+	"github.com/spf13/cobra"
+
+	"github.com/hypertf/nahcloud-server/api"
+	"github.com/hypertf/nahcloud-server/service"
+	"github.com/hypertf/nahcloud-server/service/chaos"
+	"github.com/hypertf/nahcloud-server/storage/sqlite"
 )
 
 func main() {
-	// Load configuration from environment variables
-	config := loadConfig()
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	rootCmd := &cobra.Command{
+		Use:   "nahcloud-server",
+		Short: "NahCloud Server - A mock cloud provider for Terraform testing",
+		Long: `NahCloud Server is a mock cloud provider designed for testing Terraform configurations.
+
+It provides fake implementations of cloud resources like compute instances, projects,
+and metadata services, with optional chaos engineering features for testing error
+handling and resilience.` + printConfigHelp(),
+		Version: Version,
+		RunE:    runServer,
+	}
+
+	setupConfig(rootCmd)
+
+	return rootCmd.Execute()
+}
+
+func runServer(cmd *cobra.Command, args []string) error {
+	// Load configuration
+	config, err := loadConfig(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
 
 	// Initialize database
 	db, err := sqlite.NewDB(config.SQLiteDSN)
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		return fmt.Errorf("failed to initialize database: %w", err)
 	}
 	defer db.Close()
 
@@ -30,12 +61,15 @@ func main() {
 	projectRepo := sqlite.NewProjectRepository(db)
 	instanceRepo := sqlite.NewInstanceRepository(db)
 	metadataRepo := sqlite.NewMetadataRepository(db)
+	bucketRepo := sqlite.NewBucketRepository(db)
+	objectRepo := sqlite.NewObjectRepository(db)
 
 	// Initialize service layer
-	svc := service.NewService(projectRepo, instanceRepo, metadataRepo)
+	svc := service.NewService(projectRepo, instanceRepo, metadataRepo, bucketRepo, objectRepo)
 
-	// Initialize chaos service
-	chaosService := chaos.NewChaosService()
+	// Initialize chaos service with config
+	chaosConfig := config.ToChaosConfig()
+	chaosService := chaos.NewChaosServiceWithConfig(chaosConfig)
 
 	// Initialize API handlers
 	handler := api.NewHandler(svc, chaosService, config.Token)
@@ -45,7 +79,7 @@ func main() {
 
 	// Create HTTP server
 	server := &http.Server{
-		Addr:         config.HTTPAddr,
+		Addr:         config.Addr,
 		Handler:      router,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -55,7 +89,10 @@ func main() {
 	// Start server in a goroutine
 	serverErrors := make(chan error, 1)
 	go func() {
-		log.Printf("DirtCloud server starting on %s", config.HTTPAddr)
+		log.Printf("NahCloud server starting on %s", config.Addr)
+		if chaosConfig.Enabled {
+			log.Printf("Chaos engineering enabled (seed: %d)", chaosConfig.Seed)
+		}
 		serverErrors <- server.ListenAndServe()
 	}()
 
@@ -65,7 +102,7 @@ func main() {
 
 	select {
 	case err := <-serverErrors:
-		log.Fatalf("Server error: %v", err)
+		return fmt.Errorf("server error: %w", err)
 	case sig := <-shutdown:
 		log.Printf("Received signal %v, starting graceful shutdown", sig)
 
@@ -82,28 +119,5 @@ func main() {
 	}
 
 	log.Println("Server stopped")
-}
-
-// Config holds server configuration
-type Config struct {
-	HTTPAddr  string
-	Token     string
-	SQLiteDSN string
-}
-
-// loadConfig loads configuration from environment variables
-func loadConfig() Config {
-	return Config{
-		HTTPAddr:  getEnv("DIRT_HTTP_ADDR", ":8080"),
-		Token:     getEnv("DIRT_TOKEN", ""),
-		SQLiteDSN: getEnv("DIRT_SQLITE_DSN", ""),
-	}
-}
-
-// getEnv gets an environment variable with a default value
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
+	return nil
 }

@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/hypertf/dirtcloud-server/domain"
-	"github.com/hypertf/dirtcloud-server/service"
-	"github.com/hypertf/dirtcloud-server/service/chaos"
+	"github.com/hypertf/nahcloud-server/domain"
+	"github.com/hypertf/nahcloud-server/service"
+	"github.com/hypertf/nahcloud-server/service/chaos"
 )
 
 // Handler holds dependencies for HTTP handlers
@@ -53,10 +53,10 @@ func (h *Handler) authenticate(r *http.Request) error {
 // writeError writes a domain error as JSON response
 func (h *Handler) writeError(w http.ResponseWriter, err error) {
 	var statusCode int
-	var dirtErr *domain.DirtError
+	var nahErr *domain.NahError
 
-	if de, ok := err.(*domain.DirtError); ok {
-		dirtErr = de
+	if de, ok := err.(*domain.NahError); ok {
+		nahErr = de
 		switch de.Code {
 		case domain.ErrorCodeNotFound:
 			statusCode = http.StatusNotFound
@@ -77,12 +77,12 @@ func (h *Handler) writeError(w http.ResponseWriter, err error) {
 		}
 	} else {
 		statusCode = http.StatusInternalServerError
-		dirtErr = domain.InternalError(err.Error())
+		nahErr = domain.InternalError(err.Error())
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(dirtErr)
+	json.NewEncoder(w).Encode(nahErr)
 }
 
 // writeJSON writes a JSON response
@@ -494,5 +494,212 @@ func (h *Handler) DeleteMetadata(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// Bucket handlers
+
+// CreateBucket handles POST /v1/buckets
+func (h *Handler) CreateBucket(w http.ResponseWriter, r *http.Request) {
+	if err := h.authenticate(r); err != nil {
+		h.writeError(w, err)
+		return
+	}
+	var req domain.CreateBucketRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, domain.InvalidInputError("invalid JSON", nil))
+		return
+	}
+	bucket, err := h.service.CreateBucket(req)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	h.writeJSON(w, http.StatusCreated, bucket)
+}
+
+// GetBucket handles GET /v1/buckets/{id}
+func (h *Handler) GetBucket(w http.ResponseWriter, r *http.Request) {
+	if err := h.authenticate(r); err != nil {
+		h.writeError(w, err)
+		return
+	}
+	vars := mux.Vars(r)
+	id := vars["id"]
+	bucket, err := h.service.GetBucket(id)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	h.writeJSON(w, http.StatusOK, bucket)
+}
+
+// ListBuckets handles GET /v1/buckets
+func (h *Handler) ListBuckets(w http.ResponseWriter, r *http.Request) {
+	if err := h.authenticate(r); err != nil {
+		h.writeError(w, err)
+		return
+	}
+	opts := domain.BucketListOptions{ Name: r.URL.Query().Get("name") }
+	buckets, err := h.service.ListBuckets(opts)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	h.writeJSON(w, http.StatusOK, buckets)
+}
+
+// UpdateBucket handles PATCH /v1/buckets/{id}
+func (h *Handler) UpdateBucket(w http.ResponseWriter, r *http.Request) {
+	if err := h.authenticate(r); err != nil {
+		h.writeError(w, err)
+		return
+	}
+	vars := mux.Vars(r)
+	id := vars["id"]
+	var req domain.UpdateBucketRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, domain.InvalidInputError("invalid JSON", nil))
+		return
+	}
+	bucket, err := h.service.UpdateBucket(id, req)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	h.writeJSON(w, http.StatusOK, bucket)
+}
+
+// DeleteBucket handles DELETE /v1/buckets/{id}
+func (h *Handler) DeleteBucket(w http.ResponseWriter, r *http.Request) {
+	if err := h.authenticate(r); err != nil {
+		h.writeError(w, err)
+		return
+	}
+	vars := mux.Vars(r)
+	id := vars["id"]
+	if err := h.service.DeleteBucket(id); err != nil {
+		h.writeError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// Object handlers
+
+// CreateObject handles POST /v1/bucket/{bucket_id}/objects
+func (h *Handler) CreateObject(w http.ResponseWriter, r *http.Request) {
+	if err := h.authenticate(r); err != nil {
+		h.writeError(w, err)
+		return
+	}
+	vars := mux.Vars(r)
+	bucketID := vars["bucket_id"]
+	var req domain.CreateObjectRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, domain.InvalidInputError("invalid JSON", nil))
+		return
+	}
+	// Force the bucket from the URL
+	req.BucketID = bucketID
+	obj, err := h.service.CreateObject(req)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	h.writeJSON(w, http.StatusCreated, obj)
+}
+
+// GetObject handles GET /v1/bucket/{bucket_id}/objects/{id}
+func (h *Handler) GetObject(w http.ResponseWriter, r *http.Request) {
+	if err := h.authenticate(r); err != nil {
+		h.writeError(w, err)
+		return
+	}
+	vars := mux.Vars(r)
+	bucketID := vars["bucket_id"]
+	id := vars["id"]
+	obj, err := h.service.GetObject(id)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	// Enforce object belongs to the requested bucket
+	if obj.BucketID != bucketID {
+		h.writeError(w, domain.NotFoundError("object", id))
+		return
+	}
+	h.writeJSON(w, http.StatusOK, obj)
+}
+
+// ListObjects handles GET /v1/bucket/{bucket_id}/objects
+func (h *Handler) ListObjects(w http.ResponseWriter, r *http.Request) {
+	if err := h.authenticate(r); err != nil {
+		h.writeError(w, err)
+		return
+	}
+	vars := mux.Vars(r)
+	bucketID := vars["bucket_id"]
+	opts := domain.ObjectListOptions{
+		BucketID: bucketID,
+		Prefix:   r.URL.Query().Get("prefix"),
+	}
+	objects, err := h.service.ListObjects(opts)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	h.writeJSON(w, http.StatusOK, objects)
+}
+
+// UpdateObject handles PATCH /v1/bucket/{bucket_id}/objects/{id}
+func (h *Handler) UpdateObject(w http.ResponseWriter, r *http.Request) {
+	if err := h.authenticate(r); err != nil {
+		h.writeError(w, err)
+		return
+	}
+	vars := mux.Vars(r)
+	bucketID := vars["bucket_id"]
+	id := vars["id"]
+	var req domain.UpdateObjectRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, domain.InvalidInputError("invalid JSON", nil))
+		return
+	}
+	obj, err := h.service.UpdateObject(id, req)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	if obj.BucketID != bucketID {
+		h.writeError(w, domain.NotFoundError("object", id))
+		return
+	}
+	h.writeJSON(w, http.StatusOK, obj)
+}
+
+// DeleteObject handles DELETE /v1/bucket/{bucket_id}/objects/{id}
+func (h *Handler) DeleteObject(w http.ResponseWriter, r *http.Request) {
+	if err := h.authenticate(r); err != nil {
+		h.writeError(w, err)
+		return
+	}
+	vars := mux.Vars(r)
+	bucketID := vars["bucket_id"]
+	id := vars["id"]
+	// Ensure object belongs to bucket before deleting
+	obj, err := h.service.GetObject(id)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	if obj.BucketID != bucketID {
+		h.writeError(w, domain.NotFoundError("object", id))
+		return
+	}
+	if err := h.service.DeleteObject(id); err != nil {
+		h.writeError(w, err)
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }

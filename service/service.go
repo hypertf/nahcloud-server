@@ -5,14 +5,16 @@ import (
 	"encoding/hex"
 	"regexp"
 
-	"github.com/hypertf/dirtcloud-server/domain"
+	"github.com/hypertf/nahcloud-server/domain"
 )
 
-// Service provides business logic for DirtCloud operations
+// Service provides business logic for NahCloud operations
 type Service struct {
 	projectRepo  ProjectRepository
 	instanceRepo InstanceRepository
 	metadataRepo MetadataRepository
+	bucketRepo   BucketRepository
+	objectRepo   ObjectRepository
 }
 
 // ProjectRepository defines the interface for project data operations
@@ -43,12 +45,33 @@ type MetadataRepository interface {
 	Delete(id string) error
 }
 
+// BucketRepository defines the interface for bucket data operations
+type BucketRepository interface {
+	Create(bucket *domain.Bucket) error
+	GetByID(id string) (*domain.Bucket, error)
+	GetByName(name string) (*domain.Bucket, error)
+	List(opts domain.BucketListOptions) ([]*domain.Bucket, error)
+	Update(id string, req domain.UpdateBucketRequest) (*domain.Bucket, error)
+	Delete(id string) error
+}
+
+// ObjectRepository defines the interface for object data operations
+type ObjectRepository interface {
+	Create(req domain.CreateObjectRequest) (*domain.Object, error)
+	GetByID(id string) (*domain.Object, error)
+	Update(id string, req domain.UpdateObjectRequest) (*domain.Object, error)
+	List(opts domain.ObjectListOptions) ([]*domain.Object, error)
+	Delete(id string) error
+}
+
 // NewService creates a new service instance
-func NewService(projectRepo ProjectRepository, instanceRepo InstanceRepository, metadataRepo MetadataRepository) *Service {
+func NewService(projectRepo ProjectRepository, instanceRepo InstanceRepository, metadataRepo MetadataRepository, bucketRepo BucketRepository, objectRepo ObjectRepository) *Service {
 	return &Service{
 		projectRepo:  projectRepo,
 		instanceRepo: instanceRepo,
 		metadataRepo: metadataRepo,
+		bucketRepo:   bucketRepo,
+		objectRepo:   objectRepo,
 	}
 }
 
@@ -75,6 +98,24 @@ func validateProjectName(name string) error {
 	// Simple alphanumeric + dash/underscore validation
 	if !regexp.MustCompile(`^[a-zA-Z0-9_-]+$`).MatchString(name) {
 		return domain.InvalidInputError("project name can only contain alphanumeric characters, dashes, and underscores", nil)
+	}
+	return nil
+}
+
+// validateBucketName validates a bucket name
+func validateBucketName(name string) error {
+	if name == "" {
+		return domain.InvalidInputError("bucket name cannot be empty", nil)
+	}
+	if len(name) > 255 {
+		return domain.InvalidInputError("bucket name too long", map[string]interface{}{
+			"max_length": 255,
+			"actual":     len(name),
+		})
+	}
+	// Simple alphanumeric + dash/underscore validation
+	if !regexp.MustCompile(`^[a-zA-Z0-9_-]+$`).MatchString(name) {
+		return domain.InvalidInputError("bucket name can only contain alphanumeric characters, dashes, and underscores", nil)
 	}
 	return nil
 }
@@ -136,6 +177,17 @@ func validateInstanceStatus(status string) error {
 			"valid_statuses": []string{domain.StatusRunning, domain.StatusStopped},
 			"actual":         status,
 		})
+	}
+	return nil
+}
+
+// validateObjectPath validates an object path
+func validateObjectPath(path string) error {
+	if path == "" {
+		return domain.InvalidInputError("object path cannot be empty", nil)
+	}
+	if len(path) > 1024 {
+		return domain.InvalidInputError("object path too long", map[string]interface{}{"max_length": 1024, "actual": len(path)})
 	}
 	return nil
 }
@@ -252,6 +304,25 @@ func (s *Service) ListInstances(opts domain.InstanceListOptions) ([]*domain.Inst
 
 // UpdateInstance updates an existing instance
 func (s *Service) UpdateInstance(id string, req domain.UpdateInstanceRequest) (*domain.Instance, error) {
+	// Get current instance to check for immutable field changes
+	current, err := s.instanceRepo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Image changes require instance recreation - only error if actually changing
+	if req.Image != nil && *req.Image != current.Image {
+		return nil, domain.InvalidInputError(
+			"Cannot change instance image from '"+current.Image+"' to '"+*req.Image+"'. The image field is immutable - you must destroy and recreate the instance to change the image.",
+			map[string]interface{}{
+				"field":         "image",
+				"current_value": current.Image,
+				"requested_value": *req.Image,
+				"solution":      "Remove and re-add the resource, or use 'terraform taint' to force recreation",
+			},
+		)
+	}
+
 	if req.Name != nil {
 		if err := validateInstanceName(*req.Name); err != nil {
 			return nil, err
@@ -259,12 +330,7 @@ func (s *Service) UpdateInstance(id string, req domain.UpdateInstanceRequest) (*
 	}
 
 	if req.CPU != nil || req.MemoryMB != nil {
-		// Get current instance to validate complete specs
-		current, err := s.instanceRepo.GetByID(id)
-		if err != nil {
-			return nil, err
-		}
-
+		// Validate complete specs using current values as defaults
 		cpu := current.CPU
 		memory := current.MemoryMB
 		image := current.Image
@@ -274,9 +340,6 @@ func (s *Service) UpdateInstance(id string, req domain.UpdateInstanceRequest) (*
 		}
 		if req.MemoryMB != nil {
 			memory = *req.MemoryMB
-		}
-		if req.Image != nil {
-			image = *req.Image
 		}
 
 		if err := validateInstanceSpecs(cpu, memory, image); err != nil {
@@ -339,4 +402,114 @@ func (s *Service) DeleteMetadata(id string) error {
 	}
 
 	return s.metadataRepo.Delete(id)
+}
+
+// Bucket operations
+
+// CreateBucket creates a new bucket
+// Bucket IDs are now equal to their names to provide a stable, user-defined identifier.
+func (s *Service) CreateBucket(req domain.CreateBucketRequest) (*domain.Bucket, error) {
+	if err := validateBucketName(req.Name); err != nil {
+		return nil, err
+	}
+	// Use name as the stable identifier (ID)
+	b := &domain.Bucket{ID: req.Name, Name: req.Name}
+	if err := s.bucketRepo.Create(b); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+// GetBucket retrieves a bucket by ID (or name, if name is the identifier)
+func (s *Service) GetBucket(id string) (*domain.Bucket, error) {
+	return s.bucketRepo.GetByID(id)
+}
+
+// GetBucketByName retrieves a bucket by name
+func (s *Service) GetBucketByName(name string) (*domain.Bucket, error) {
+	return s.bucketRepo.GetByName(name)
+}
+
+// ListBuckets lists buckets with optional filtering
+func (s *Service) ListBuckets(opts domain.BucketListOptions) ([]*domain.Bucket, error) {
+	return s.bucketRepo.List(opts)
+}
+
+// UpdateBucket updates an existing bucket
+// With IDs equal to names, bucket name is immutable. Attempting to change it will return an error.
+func (s *Service) UpdateBucket(id string, req domain.UpdateBucketRequest) (*domain.Bucket, error) {
+	if err := validateBucketName(req.Name); err != nil {
+		return nil, err
+	}
+	// Get current bucket to enforce immutability
+	current, err := s.bucketRepo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if req.Name != current.Name {
+		return nil, domain.InvalidInputError(
+			"Cannot change bucket name from '"+current.Name+"' to '"+req.Name+"'. The name is immutable because it is used as the bucket ID. Destroy and recreate the bucket to change the name.",
+			map[string]interface{}{
+				"field":           "name",
+				"current_value":   current.Name,
+				"requested_value": req.Name,
+				"solution":        "Remove and re-add the resource, or recreate the bucket with the desired name",
+			},
+		)
+	}
+	// No-op update (name unchanged)
+	return current, nil
+}
+
+// DeleteBucket deletes a bucket
+func (s *Service) DeleteBucket(id string) error {
+	return s.bucketRepo.Delete(id)
+}
+
+// Object operations
+
+// CreateObject creates a new object under a bucket
+func (s *Service) CreateObject(req domain.CreateObjectRequest) (*domain.Object, error) {
+	if err := validateObjectPath(req.Path); err != nil {
+		return nil, err
+	}
+	if req.BucketID == "" {
+		return nil, domain.InvalidInputError("bucket_id cannot be empty", nil)
+	}
+	if req.Content == "" {
+		return nil, domain.InvalidInputError("content cannot be empty", nil)
+	}
+	// Verify bucket exists
+	if _, err := s.bucketRepo.GetByID(req.BucketID); err != nil {
+		if domain.IsNotFound(err) {
+			return nil, domain.ForeignKeyViolationError("bucket", "id", req.BucketID)
+		}
+		return nil, err
+	}
+	return s.objectRepo.Create(req)
+}
+
+// GetObject retrieves an object by ID
+func (s *Service) GetObject(id string) (*domain.Object, error) {
+	return s.objectRepo.GetByID(id)
+}
+
+// ListObjects lists objects with optional filtering
+func (s *Service) ListObjects(opts domain.ObjectListOptions) ([]*domain.Object, error) {
+	return s.objectRepo.List(opts)
+}
+
+// UpdateObject updates an existing object
+func (s *Service) UpdateObject(id string, req domain.UpdateObjectRequest) (*domain.Object, error) {
+	if req.Path != nil {
+		if err := validateObjectPath(*req.Path); err != nil {
+			return nil, err
+		}
+	}
+	return s.objectRepo.Update(id, req)
+}
+
+// DeleteObject deletes an object
+func (s *Service) DeleteObject(id string) error {
+	return s.objectRepo.Delete(id)
 }
