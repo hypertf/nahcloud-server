@@ -1,0 +1,47 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Build Linux binary
+        run: |
+          GOOS=linux GOARCH=amd64 go build -o nahcloud-server ./cmd/server
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Delete existing release
+        run: gh release delete latest --yes || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        run: |
+          gh release create latest \
+            --title "Latest Build" \
+            --notes "Automated build from commit ${{ steps.sha.outputs.short }}" \
+            --prerelease \
+            nahcloud-server
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger Forge Deployment
+        run: |
+          curl -X POST "${{ secrets.FORGE_DEPLOY_URL }}" || true
