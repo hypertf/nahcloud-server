@@ -25,7 +25,7 @@ jobs:
 
       - name: Build Linux binary
         run: |
-          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.Version=${{ steps.sha.outputs.short }}" -o nahcloud-server ./cmd/server
+          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.Version=${{ steps.sha.outputs.short }}" -o nahcloud ./cmd/server
 
       - name: Delete existing release
         run: gh release delete latest --yes || true
@@ -38,7 +38,7 @@ jobs:
             --title "Latest Build" \
             --notes "Automated build from commit ${{ steps.sha.outputs.short }}" \
             --prerelease \
-            nahcloud-server
+            nahcloud
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"regexp"
 
-	"github.com/hypertf/nahcloud-server/domain"
+	"github.com/hypertf/nahcloud/domain"
 )
 
 // Service provides business logic for NahCloud operations

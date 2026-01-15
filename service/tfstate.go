@@ -3,7 +3,7 @@ package service
 import (
 	"encoding/json"
 
-	"github.com/hypertf/nahcloud-server/domain"
+	"github.com/hypertf/nahcloud/domain"
 )
 
 func tfStatePath(stateID string) string      { return "tfstate/" + stateID }

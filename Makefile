@@ -1,7 +1,7 @@
 .PHONY: build test clean server provider install-deps fmt vet lint acceptance-test chaos-test help
 
 # Variables
-BINARY_NAME_SERVER=nahcloud-server
+BINARY_NAME_SERVER=nahcloud
 
 VERSION?=dev
 LDFLAGS=-ldflags "-X main.version=$(VERSION)"

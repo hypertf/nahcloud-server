@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hypertf/nahcloud-server/domain"
+	"github.com/hypertf/nahcloud/domain"
 )
 
 // BucketRepository handles bucket data operations

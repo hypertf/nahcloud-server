@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hypertf/nahcloud-server/domain"
+	"github.com/hypertf/nahcloud/domain"
 )
 
 // Client provides a Go SDK for the NahCloud API

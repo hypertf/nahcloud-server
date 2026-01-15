@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/hypertf/nahcloud-server/domain"
+	"github.com/hypertf/nahcloud/domain"
 )
 
 // MetadataRepository handles metadata data operations

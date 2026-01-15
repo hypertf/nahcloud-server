@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/hypertf/nahcloud-server/service/chaos"
+	"github.com/hypertf/nahcloud/service/chaos"
 )
 
 // Version is set at build time

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/hypertf/nahcloud-server/web"
+	"github.com/hypertf/nahcloud/web"
 )
 
 var startTime = time.Now()

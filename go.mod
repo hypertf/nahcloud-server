@@ -1,4 +1,4 @@
-module github.com/hypertf/nahcloud-server
+module github.com/hypertf/nahcloud
 
 go 1.23.0
 

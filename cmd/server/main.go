@@ -12,10 +12,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/hypertf/nahcloud-server/api"
-	"github.com/hypertf/nahcloud-server/service"
-	"github.com/hypertf/nahcloud-server/service/chaos"
-	"github.com/hypertf/nahcloud-server/storage/sqlite"
+	"github.com/hypertf/nahcloud/api"
+	"github.com/hypertf/nahcloud/service"
+	"github.com/hypertf/nahcloud/service/chaos"
+	"github.com/hypertf/nahcloud/storage/sqlite"
 )
 
 func main() {

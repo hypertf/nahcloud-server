@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/hypertf/nahcloud-server/domain"
-	"github.com/hypertf/nahcloud-server/service"
-	"github.com/hypertf/nahcloud-server/service/chaos"
+	"github.com/hypertf/nahcloud/domain"
+	"github.com/hypertf/nahcloud/service"
+	"github.com/hypertf/nahcloud/service/chaos"
 )
 
 // Handler holds dependencies for HTTP handlers
