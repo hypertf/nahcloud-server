@@ -850,6 +850,8 @@ func (h *Handler) ListStorage(w http.ResponseWriter, r *http.Request) {
         <thead>
             <tr>
                 <th class="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 bg-slate-50 border-b border-slate-200">Bucket Name</th>
+                <th class="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 bg-slate-50 border-b border-slate-200">Created At</th>
+                <th class="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 bg-slate-50 border-b border-slate-200">Updated At</th>
             </tr>
         </thead>
         <tbody>
@@ -863,6 +865,8 @@ func (h *Handler) ListStorage(w http.ResponseWriter, r *http.Request) {
                         <span class="font-medium">{{.Name}}</span>
                     </a>
                 </td>
+                <td class="px-6 py-4 border-b border-slate-100 text-slate-500">{{.CreatedAt.Format "2006-01-02 15:04:05"}}</td>
+                <td class="px-6 py-4 border-b border-slate-100 text-slate-500">{{.UpdatedAt.Format "2006-01-02 15:04:05"}}</td>
             </tr>
             {{end}}
         </tbody>
