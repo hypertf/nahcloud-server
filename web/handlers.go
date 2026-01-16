@@ -148,8 +148,8 @@ func (h *Handler) ListProjects(w http.ResponseWriter, r *http.Request) {
     </table>
 </div>
 
-<div id="modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm" onclick="if(event.target === this) this.style.display='none'">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-auto mt-[10vh] overflow-hidden" onclick="event.stopPropagation()">
+<div id="modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm items-start justify-center" onclick="if(event.target === this) this.style.display='none'">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mt-[10vh] h-fit overflow-hidden" onclick="event.stopPropagation()">
         <div id="modal-content"></div>
     </div>
 </div>
@@ -346,8 +346,8 @@ func (h *Handler) ListInstances(w http.ResponseWriter, r *http.Request) {
     </table>
 </div>
 
-<div id="modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm" onclick="if(event.target === this) this.style.display='none'">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-auto mt-[10vh] overflow-hidden" onclick="event.stopPropagation()">
+<div id="modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm items-start justify-center" onclick="if(event.target === this) this.style.display='none'">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mt-[10vh] h-fit overflow-hidden" onclick="event.stopPropagation()">
         <div id="modal-content"></div>
     </div>
 </div>
@@ -641,8 +641,8 @@ func (h *Handler) ListMetadata(w http.ResponseWriter, r *http.Request) {
     </table>
 </div>
 
-<div id="modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm" onclick="if(event.target === this) this.style.display='none'">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-auto mt-[10vh] overflow-hidden" onclick="event.stopPropagation()">
+<div id="modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm items-start justify-center" onclick="if(event.target === this) this.style.display='none'">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mt-[10vh] h-fit overflow-hidden" onclick="event.stopPropagation()">
         <div id="modal-content"></div>
     </div>
 </div>
@@ -873,8 +873,8 @@ func (h *Handler) ListStorage(w http.ResponseWriter, r *http.Request) {
     </table>
 </div>
 
-<div id="modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm" onclick="if(event.target === this) this.style.display='none'">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-auto mt-[10vh] overflow-hidden" onclick="event.stopPropagation()">
+<div id="modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm items-start justify-center" onclick="if(event.target === this) this.style.display='none'">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mt-[10vh] h-fit overflow-hidden" onclick="event.stopPropagation()">
         <div id="modal-content"></div>
     </div>
 </div>
@@ -996,8 +996,8 @@ func (h *Handler) ListBucketObjects(w http.ResponseWriter, r *http.Request) {
     </table>
 </div>
 
-<div id="modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm" onclick="if(event.target === this) this.style.display='none'">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-auto mt-[10vh] overflow-hidden" onclick="event.stopPropagation()">
+<div id="modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm items-start justify-center" onclick="if(event.target === this) this.style.display='none'">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mt-[10vh] h-fit overflow-hidden" onclick="event.stopPropagation()">
         <div id="modal-content"></div>
     </div>
 </div>
